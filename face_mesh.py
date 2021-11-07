@@ -16,6 +16,13 @@
 import numpy as np
 import mediapipe as mp
 from cv2 import cv2 as cv
+from typing import List, Dict, TypedDict
+
+
+class LandmarkDict(TypedDict):
+    x: float
+    y: float
+    z: float
 
 
 class FaceMeshing:
@@ -29,6 +36,8 @@ class FaceMeshing:
         # init class for segmentation
         self.mp_selfie_segmentation = mp.solutions.selfie_segmentation
         self.selfie_segmentation = self.mp_selfie_segmentation.SelfieSegmentation(model_selection=1)
+        # facial landmarks extracted by MediaPipe
+        self.landmarks = None
 
     def init_stream(self):
         stream = cv.VideoCapture(0)
@@ -52,23 +61,39 @@ class FaceMeshing:
                     frame.flags.writeable = False
                     frame = cv.cvtColor(frame, cv.COLOR_BGR2RGB)
                     results = face_mesh.process(frame)
-
+                    self.landmarks = results.multi_face_landmarks
                     # face mesh annotations
                     frame.flags.writeable = True
                     frame = cv.cvtColor(frame, cv.COLOR_RGB2BGR)
                     if results.multi_face_landmarks:
                         for face_landmarks in results.multi_face_landmarks:
-                            frame = self.apply_mesh(frame, face_landmarks)
+                            if self.args.meshing:
+                                frame = self.apply_mesh(frame, face_landmarks)
                             if self.args.segmentation:
-                                frame = self.apply_segmentation(frame, face_landmarks)
+                                frame = self.apply_segmentation(frame)
                 cv.imshow('Input', cv.flip(frame, 1))
-                c = cv.waitKey(1)  # press escape
+                c = cv.waitKey(1)  # press escape to quit
                 if c == 27:
                     break
             stream.release()
             cv.destroyAllWindows()
 
-    def apply_segmentation(self, image, landmarks):
+    def get_landmarks_list(self) -> List[LandmarkDict]:
+        """Returns a list of dictionaries (one dict per landmark).
+        Each dictionary contains the x, y, z coordinates
+        of the specific landmark."""
+        landmarks_dict = []
+        for idx, ldm in enumerate(self.landmarks):
+            for count, ldm_point in enumerate(ldm.landmark):
+                landmarks_dict.append(
+                    LandmarkDict(
+                        x=ldm_point.x,
+                        y=ldm_point.y,
+                        z=ldm_point.z)
+                )
+        return landmarks_dict
+
+    def apply_segmentation(self, image):
         image = cv.cvtColor(image, cv.COLOR_BGR2RGB)
         image.flags.writeable = False
         results_segmentation = self.selfie_segmentation.process(image)
