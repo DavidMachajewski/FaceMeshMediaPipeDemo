@@ -93,7 +93,15 @@ class FaceMeshing:
                 )
         return landmarks_dict
 
-    def apply_segmentation(self, image):
+    def draw_specific_landmark(self,
+                               image: np.ndarray,
+                               ldm: LandmarkDict) -> np.ndarray:
+        pass
+
+    def denormalize_landmark(self):
+        pass
+
+    def apply_segmentation(self, image: np.ndarray) -> np.ndarray:
         image = cv.cvtColor(image, cv.COLOR_BGR2RGB)
         image.flags.writeable = False
         results_segmentation = self.selfie_segmentation.process(image)
@@ -105,7 +113,7 @@ class FaceMeshing:
         image = np.where(condition, image, bg_image)
         return image
 
-    def apply_mesh(self, image, landmarks):
+    def apply_mesh(self, image: np.ndarray, landmarks) -> np.ndarray:
         self.mp_drawing.draw_landmarks(
             image=image,
             landmark_list=landmarks,
